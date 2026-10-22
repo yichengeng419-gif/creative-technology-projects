@@ -1,0 +1,19 @@
+# Core computer vision and numerical processing
+opencv-python
+mediapipe
+numpy
+Pillow
+scikit-learn
+# Stable Diffusion / img2img layer
+torch
+diffusers
+transformers
+accelerate
+safetensors
+# Audio analysis / playback helpers used by Dorothy examples
+librosa
+soundfile
+scipy
+requests
+# Note: this project also requires the Dorothy course library.
+# Install/use Dorothy from the CCI course environment before running performingFinal.py.
