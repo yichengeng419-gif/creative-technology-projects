@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta name="theme-color" content="#03060b">
+      <title>The Right to Pause - R16 / The Reading Field</title>
+     
+      <!-- Fonts used by the system interface and counter-letter. -->
+      <link rel="preconnect" href="https://fonts.googleapis.com">  
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+      <link rel="stylesheet" href="styles/app.css?v=2">
+      <link rel="preload" as="fetch" href="assets/dna-pos.bin" crossorigin>
+    </head>
+
+  <body data-stage="loading">
+    <!-- WebGL layers used by the DNA and field scenes. -->
+    <main  id="scene"  tabindex="0"  aria-label="Interactive body field. Move closer, then hold the mouse button or Space to make contact.">
+      <canvas id="fieldCanvas" aria-hidden="true"></canvas>
+      <canvas id="mainCanvas" aria-hidden="true"></canvas>
+    </main>
+    <!-- Opening stage shown while the specimen is dormant. -->
+    <div id="prelude-overlay">
+      <div class="wake-instruction">
+        <span class="wake-index">DNA / DORMANT SPECIMEN</span>
+        <span id="wake-copy" role="status">LOADING SPECIMEN</span>
+        <div id="wake-progress">
+          <i id="wake-fill"></i>
+        </div>
+      </div>
+    </div>
+
+    <div id="pc-hud" aria-hidden="true">
+      ORIGIN TRACE / 000 RPM
+    </div>
+
+    <header class="top">
+      <span>
+          <strong>THE RIGHT TO PAUSE</strong>
+          <span class="brand-detail"> / <span id="session-id">LOCAL SESSION</span>
+        </span>
+      </span>
+
+      <span class="status" id="status">SPECIMEN INITIALISING</span>
+      <time id="clock">00:00</time>
+    </header>
+    <!-- Hardware, camera and audit controls. -->
+    <div id="terminal-controls">
+      <button id="serialButton" type="button"> CONNECT SENSOR</button>
+      <button id="cameraButton" type="button" aria-expanded="false" aria-controls="obs-panel">ENABLE CAMERA</button>
+      <button id="auditButton" type="button">ML AUDIT</button>
+      <details id="sensor-settings">
+        <summary>SENSOR TIMING</summary>
+        <label for="serialTiming">Arduino messages</label>
+        <select id="serialTiming">
+          <option value="auto">AUTO / detect duration messages</option>
+          <option value="edges">TOUCH / RELEASE only</option>
+          <option value="stream">CONTINUOUS HOLDING stream</option>
+        </select>
+        <p>115200 baud.</p>
+      </details>
+      <span id="serialLabel">MOUSE SIMULATION / HOLD THE SPECIMEN TO WAKE</span>
+    </div>
+
+    <section id="session-guide" class="edge-panel">
+      <p class="tag" id="stageTag">VERIFICATION PENDING</p>
+      <h1 id="headline">The system is waiting for your body.</h1>
+      <p id="description">Move into the field. Press and hold to request a pause.</p>
+      <p id="window-label">35 S WINDOW / STARTS AT CONTACT</p>
+      <div  class="hold-meter"  id="hold-meter"  role="progressbar"  aria-label="Pause hold progress"  aria-valuemin="0"  aria-valuemax="5"  aria-valuenow="0">
+        <div>
+          <span id="hold-title">PAUSE / 01</span>
+          <span id="holdLabel">0.0 / 5.0 S</span>
+        </div>
+
+        <div class="meter-track">
+          <div class="meter-fill" id="meterFill"></div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- Live measurements and classification for the current body. -->
+    <section  id="dossier"  class="edge-panel"  aria-label="Body dossier">
+      <div class="dos-title">
+        BODY DOSSIER / LIVE
+      </div>
+    <!-- Stored session count and CSV export. -->
+      <div class="dos-row">
+        <span>CONTACTS</span>
+        <b id="dos-contacts">00</b>
+      </div>
+
+      <div class="dos-row">
+        <span>PRESSURE</span>
+        <b id="dos-pressure">00</b>
+      </div>
+
+      <div class="dos-row">
+        <span>HOLDS</span>
+        <b id="dos-holds">00</b>
+      </div>
+
+      <div class="dos-row">
+        <span>RHYTHM</span>
+        <b id="dos-rhythm">UNRESOLVED</b>
+      </div>
+
+      <div class="dos-row">
+        <span>GRADE</span>
+        <b id="dos-grade">PENDING</b>
+      </div>
+
+      <div class="dos-row">
+        <span>RF CLASS</span>
+        <b id="dos-class">UNRESOLVED</b>
+      </div>
+
+      <div class="dos-row">
+        <span>CONFIDENCE</span>
+        <b id="dos-confidence">-</b>
+      </div>
+
+      <div class="dos-row">
+        <span>POLICY</span>
+        <b id="dos-policy">STANDARD</b>
+      </div>
+
+      <div class="dos-row">
+        <span>SESSION</span>
+        <b id="dos-time">00:00</b>
+      </div>
+
+      <div class="data-row">
+        <span id="sample-progress">37 / 80 SESSIONS</span>
+        <button id="exportButton" type="button">
+          CSV EXPORT
+        </button>
+      </div>
+
+      <div class="seed-progress" aria-hidden="true">
+        <i id="sample-fill"></i>
+      </div>
+    </section>
+    <p id="hint">HOLD TO WAKE / MOUSE, SPACE OR BRASS SENSOR</p>
+    <!-- Temporary system messages and pressure effects. -->
+    <div id="event" role="status">
+      <span id="eventCode"></span>
+      <span id="eventText"></span>
+    </div>
+
+    <div id="narrative-ring"></div>
+
+    <div id="narrative-card">
+      <p id="narrative-text"></p>
+    </div>
+
+    <div id="stamp"></div>
+
+    <aside  id="obs-panel"  hidden  aria-label="Camera observation">
+      <div class="obs-head">
+        <span>PHOTO EVIDENCE BOOTH</span>
+        <button  class="close-button"  id="obs-close"  aria-label="Close panel and stop camera">×</button>
+      </div>
+      <p class="obs-status" id="obs-status">One local frame will enter this session's dossier.</p>
+      <canvas  id="cameraCanvas"  width="320"  height="240"></canvas>
+
+      <div class="obs-metrics">
+        <span>LOCAL MOTION</span>
+        <span id="motionReadoutPanel">OFF</span>
+      </div>
+
+      <div class="policy-controls">
+        <button  data-policy="strict"  aria-pressed="false">STRICT</button>
+        <button data-policy="standard" class="active" aria-pressed="true">STANDARD</button>
+        <button  data-policy="human"  aria-pressed="false">HUMAN</button>
+      </div>
+      <p id="policy-detail">
+        Small movements are allowed. Sustained large movement can interrupt a hold.
+      </p>
+      <p class="obs-footer">
+        Camera preview and motion analysis stay in this browser.
+        One frame is attached to the final report; RESET clears it.
+      </p>
+    </aside>
+    <video  id="motionVideo"  playsinline  muted  hidden></video>
+    <canvas  id="motionCanvas"  width="80"  height="60"  hidden></canvas>
+    
+    <!-- Final system report and participant counter-letter. -->
+    <div id="final-overlay" aria-hidden="true">
+      <div class="fo-stage">
+        <article id="fo-report"  aria-label="System Report">
+          <div class="fo-report-title">
+            SYSTEM REPORT / VERIFICATION OUTCOME
+          </div>
+            <p class="report-meta" id="report-source">LOCAL SESSION RECORD</p>         
+          <figure id="fo-evidence">
+            <canvas  id="fo-evidence-canvas"  width="320"  height="240"></canvas>
+            <figcaption id="fo-evidence-caption">VISUAL EVIDENCE / NOT SUBMITTED</figcaption>
+           </figure>
+           <div id="fo-report-text"></div>
+           <div id="fo-report-interpretation"></div>
+           <div class="fo-stamp">
+            ARCHIVED
+          </div>
+        </article>
+        <!-- The participant's response to algorithmic judgement. -->
+        <article id="fo-letter"  aria-label="Counter-Letter">
+          <div class="fo-letter-label">
+            COUNTER-LETTER / PERSONAL STATEMENT
+          </div>
+          <div id="fo-statement"></div>
+          <p class="letter-signature">
+            No further proof is owed.
+          </p>
+        </article>
+      </div>
+
+      <div class="fo-actions" id="fo-actions">
+        <button id="fo-reset">RESET TERMINAL</button>
+        <button id="fo-download">SAVE DOSSIER</button>
+        <button id="fo-continue">UNARCHIVED SPACE ↓</button>
+      </div>
+    </div>
+
+    <div id="unarchived-copy" hidden>
+      <p>Nothing remains to be verified.</p>
+      <small>UNARCHIVED / STILL IN MOTION</small>
+    </div>
+
+    <button id="unarchived-reset" hidden>RESET TERMINAL</button>
+    
+    <!-- Review collected sessions and the experimental classifier. -->
+    <dialog  id="audit-dialog"  aria-labelledby="audit-title">
+      <div class="audit-head">
+        <h2 id="audit-title">MODEL / DATA AUDIT</h2>
+        <button  class="close-button"  id="audit-close"  aria-label="Close audit">×</button>
+      </div>
+      <p id="audit-summary"></p>
+      <p id="audit-status"></p>
+      <div  class="audit-metrics"  id="audit-metrics"></div>
+      <h3>OUT-OF-FOLD CONFUSION MATRIX</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>ACTUAL / PREDICTED</th>
+            <th>EARLY</th>
+            <th>INTERRUPTED</th>
+            <th>PAUSE</th>
+          </tr>
+        </thead>
+        <tbody id="audit-matrix"></tbody>
+      </table>
+      <p  id="audit-counts"  class="audit-labels"></p>
+      <h3>COLLECTING TOWARDS 80</h3>
+      <p  class="audit-note"  id="audit-target"></p>
+      <div class="data-actions">
+        <button id="importButton">IMPORT SESSION CSV</button>
+        <button id="audit-export">EXPORT ALL SESSIONS</button>
+        <button id="retrainButton">RETRAIN + AUDIT</button>
+      </div>
+      <input  id="csv-input"  type="file"  accept=".csv,text/csv"  hidden>
+      <p  class="import-message"  id="import-message"  role="status"></p>
+      <p  id="audit-limitations"  class="audit-note"></p>
+      <p class="audit-note">
+        Inputs: completed hold count, mean hold, retry delay,
+        aborted attempts, elapsed session time and missing retry flag.
+       </p>
+     </dialog>
+    <!-- Start the application after the page structure is available. -->
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>

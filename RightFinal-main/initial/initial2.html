@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>The Right to Pause - archive test</title>
+<style>
+/* archive page test */
+body {
+  margin: 0;
+  background: #e8e8e8;
+  font-family: Georgia, serif;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px;
+}
+
+h1 { font-size: 24px; color: #333; }
+
+.btn {
+  padding: 12px 30px;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .3s ease;
+  margin-bottom: 30px;
+}
+.btn:hover { background: #555; transform: scale(1.05); }
+
+/* the report, made to look like an official document */
+.report-card {
+  background: #fffdf5;
+  width: 420px;
+  padding: 30px 35px;
+  border: 2px solid #222;
+  box-shadow: 5px 5px 0px #ccc;
+  margin-bottom: 25px;
+  display: none;
+  animation: fadeIn .8s;
+}
+
+.report-card h2 {
+  font-size: 15px;
+  text-align: center;
+  letter-spacing: 3px;
+  border-bottom: 2px solid #222;
+  padding-bottom: 12px;
+  margin-top: 0;
+}
+
+.report-card p { font-size: 13px; line-height: 1.7; color: #333; }
+
+.meta {
+  font-size: 11px !important;
+  color: #888 !important;
+  font-family: monospace;
+}
+
+.stamp {
+  display: inline-block;
+  border: 3px solid crimson;
+  color: crimson;
+  padding: 5px 15px;
+  font-weight: bold;
+  letter-spacing: 4px;
+  transform: rotate(-5deg);
+  margin-top: 10px;
+}
+
+/* the letter answers the report */
+.letter-card {
+  background: #fdf6e3;
+  width: 420px;
+  padding: 30px 35px;
+  border-left: 6px solid #b58900;
+  box-shadow: 3px 3px 8px rgba(0,0,0,.15);
+  font-style: italic;
+  display: none;
+  animation: fadeIn .8s;
+}
+
+.letter-card p { font-size: 14px; line-height: 2; color: #444; margin: 8px 0; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* footer */
+.footer { margin-top: 20px; font-size: 11px; color: #aaa; }
+</style>
+<base target="_blank">
+</head>
+<body>
+
+<div class="container">
+    <h1>Archive Generator (test)</h1>
+    <p>testing how the report and the letter look after a pause</p>
+
+<button class="btn" onclick="generate()">GENERATE ARCHIVE</button>
+
+  <div class="report-card" id="report">
+    <h2>NOTICE OF VERIFICATION OUTCOME</h2>
+    <p class="meta" id="caseId"></p>
+    <p id="line1"></p>
+    <p id="line2"></p>
+    <p id="line3"></p>
+    <div class="stamp">ARCHIVED</div>
+  </div>
+
+  <div class="letter-card" id="letter">
+    <p>My pause is not a malfunction.</p>
+    <p>I was here. I was still. That was enough.</p>
+    <p>Nothing further is required of me.</p>
+  </div>
+
+  <p class="footer">the right to pause - test page</p>
+</div>
+
+<script>
+// fake session data for now, later this comes from the real sensor
+function generate() {
+  const contacts = 1 + Math.floor(Math.random() * 6);
+  const seconds  = 15 + Math.floor(Math.random() * 120);
+  const still    = (5 + Math.random() * 5).toFixed(1);
+  const caseNum  = "CASE-" + Math.floor(Math.random() * 9000 + 1000);
+
+  document.getElementById("caseId").innerHTML = caseNum + " / SESSION CLOSED";
+
+  document.getElementById("line1").innerHTML =
+    "The subject submitted " + contacts + " contact event(s) over " + seconds + " seconds, then ceased all cooperation.";
+
+  document.getElementById("line2").innerHTML = "Longest recorded stillness: " + still + " seconds.";
+
+  document.getElementById("line3").innerHTML =
+    "No further proof was produced. Your presence remains pending. Please re-verify within 24 hours.";
+
+  document.getElementById("report").style.display = "block";
+
+  // letter shows up a bit after the report, like a reply
+  setTimeout(() => {
+    document.getElementById("letter").style.display = "block";
+  }, 1500);
+}
+</script>
+
+</body>
+</html>

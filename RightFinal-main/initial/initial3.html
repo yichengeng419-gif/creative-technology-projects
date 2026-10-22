@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verification System v4.2.1</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #000;
+  color: #888;
+  font-family: 'Courier New', monospace;
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* status bar */
+#status-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 22px;
+  background: #060606;
+  border-bottom: 1px solid #111;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 10px;
+  color: #444;
+  letter-spacing: 0.06em;
+  z-index: 10;
+  gap: 0;
+}
+#status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #444;
+  margin-right: 6px;
+  animation: blink 0.9s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* countdown bar */
+#countdown-track {
+  position: absolute;
+  top: 22px; left: 0; right: 0;
+  height: 2px;
+  background: #080808;
+  z-index: 10;
+}
+#countdown-fill {
+  height: 100%;
+  width: 100%;
+  background: #444;
+  transition: width 0.5s linear, background 1s;
+}
+
+/* ── ASCII canvas ── */
+#ascii-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  z-index: 1;
+}
+
+/* ── Main UI ── */
+#main-ui {
+  position: absolute;
+  top: 24px; left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: opacity 0.4s;
+}
+
+#proof-label {
+  font-size: 9px;
+  color: #2a2a2a;
+  letter-spacing: 0.18em;
+  margin-bottom: 16px;
+}
+
+#proof-request {
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  line-height: 1.9;
+  max-width: 520px;
+  margin-bottom: 32px;
+  letter-spacing: 0.02em;
+  transition: opacity 0.25s;
+}
+
+#submit-btn {
+  background: #040404;
+  border: 1px solid #1e1e1e;
+  color: #3a3a3a;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  padding: 11px 36px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+#submit-btn:hover { border-color: #333; color: #666; }
+#submit-btn:active { border-color: #555; color: #888; }
+
+#counter {
+  margin-top: 18px;
+  font-size: 9px;
+  color: #1e1e1e;
+  letter-spacing: 0.1em;
+}
+
+/* ── Error popups ── */
+.error-popup {
+  position: absolute;
+  background: #050505;
+  border: 1px solid #181818;
+  padding: 11px 15px;
+  font-size: 9px;
+  color: #333;
+  line-height: 1.75;
+  max-width: 195px;
+  z-index: 8;
+  animation: fadeIn 0.5s ease;
+}
+.error-popup .err-title { color: #444; margin-bottom: 3px; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Frozen overlay ── */
+#frozen-msg {
+  display: none;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 20;
+  animation: fadeIn 0.6s ease;
+}
+#frozen-msg .main-line {
+  font-size: 14px;
+  color: #555;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
+}
+#frozen-msg .sub-line {
+  font-size: 9px;
+  color: #2a2a2a;
+  letter-spacing: 0.18em;
+}
+
+/* ── Healing layer ── */
+#healing-layer {
+  display: none;
+  position: absolute;
+  top: 24px; left: 0; right: 0; bottom: 0;
+  z-index: 15;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+#healing-report {
+  text-align: center;
+  max-width: 560px;
+  padding: 0 24px;
+  animation: fadeIn 2s ease;
+}
+#system-report-text {
+  font-size: 10px;
+  color: #2a3a38;
+  line-height: 2;
+  margin-bottom: 36px;
+  letter-spacing: 0.04em;
+  border: 1px solid #0d1f1c;
+  padding: 20px 28px;
+  background: #010808;
+  white-space: pre-line;
+}
+#counter-statement-text {
+  font-size: 12px;
+  color: #1a6b5a;
+  line-height: 2.2;
+  letter-spacing: 0.04em;
+  transition: opacity 1s;
+  white-space: pre-line;
+}
+
+/* ── Utility buttons ── */
+#util-bar {
+  position: absolute;
+  bottom: 14px; right: 16px;
+  z-index: 20;
+  text-align: right;
+}
+#connect-btn {
+  background: transparent;
+  border: 1px solid #141414;
+  color: #2a2a2a;
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  padding: 5px 12px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+}
+#connect-btn:hover { border-color: #2a2a2a; color: #444; }
+#connect-status {
+  font-size: 8px;
+  color: #1e1e1e;
+  margin-top: 5px;
+  letter-spacing: 0.06em;
+}
+</style>
+</head>
+<body>
+
+<!-- Status bar -->
+<div id="status-bar">
+  VERIFICATION SYSTEM v4.2.1 &nbsp;|&nbsp;
+  SESSION:&nbsp;<span id="session-id">A7F-2291</span> &nbsp;|&nbsp;
+  <span id="status-dot"></span><span id="status-text">PENDING VERIFICATION</span>
+</div>
+
+<!-- Countdown bar -->
+<div id="countdown-track">
+  <div id="countdown-fill"></div>
+</div>
+
+<!-- ASCII canvas (background layer) -->
+<canvas id="ascii-canvas"></canvas>
+
+<!-- Main verification UI -->
+<div id="main-ui">
+  <div id="proof-label">PROOF REQUIREMENT #<span id="req-number">1</span></div>
+  <div id="proof-request">Initialising verification protocol...</div>
+  <button id="submit-btn">SUBMIT PROOF</button>
+  <div id="counter">submissions: <span id="sub-count">0</span></div>
+</div>
+
+<!-- Frozen state -->
+<div id="frozen-msg">
+  <div class="main-line">Temporal Sabotage Detected.</div>
+  <div class="main-line" style="font-size:12px; color:#444; margin-bottom:14px;">Pausing Server...</div>
+  <div class="sub-line">ANALYSING INTERACTION PATTERN</div>
+</div>
+
+<!-- Healing layer -->
+<div id="healing-layer">
+  <div id="healing-report">
+    <div id="system-report-text">Generating report...</div>
+    <div id="counter-statement-text" style="opacity:0"></div>
+  </div>
+</div>
+
+<!-- Utility bar -->
+<div id="util-bar">
+  <button id="connect-btn" onclick="connectDevice()">CONNECT DEVICE</button>
+  <div id="connect-status">no device · using mouse input</div>
+</div>
+
+<!-- p5.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+
+<script>
+// ---- config, edit these ----
+const PAUSE_THRESHOLD_MS = 5000    // 5s pause -> frozen
+const HEALING_THRESHOLD_MS = 10000 // 10s pause -> healing
+const COUNTDOWN_DURATION_MS = 90000 // 90s, felt right after testing a bunch of values
+
+/* question library — pre-generated offline, no LLM needed for these */
+const QUESTIONS = [
+  "Please confirm that your confirmation is confirmable.",
+  "Provide evidence that your previous evidence was submitted by you.",
+  "Verify that your identity is identical to the identity being verified.",
+  "Confirm that you understand the consequences of not understanding.",
+  "Please explain why your explanation should be considered explanatory.",
+  "Your presence has been detected. Please prove your presence.",
+  "Submit proof that you are capable of submitting proof.",
+  "Clarify whether your waiting time was voluntary, accidental, or system-induced.",
+  "Your submission has been received. Please submit a receipt for your submission.",
+  "Demonstrate that you are human enough to demonstrate humanity.",
+  "Please justify why this proof should be accepted as proof.",
+  "Confirm that the above confirmation has been confirmed by you.",
+  "Evidence of eligibility is required before eligibility can be assessed.",
+  "Please complete the form to receive the form required to complete the form.",
+  "Your continued presence suggests presence. Please verify this suggestion.",
+  "Submit documentation confirming your documentation is documentable.",
+  "Repeat submission noted: repetition does not increase validity.",
+  "Please indicate whether your indication was intentional.",
+  "Your pause has been flagged. Please provide justification for pausing.",
+  "Confirm that you have read and understood what you have not been shown.",
+  "Please resubmit your previous submission with additional proof of submission.",
+  "This system requires proof that you require proof. Please provide it.",
+  "Your humanity has not been verified. Please verify your verification process.",
+  "Provide a timestamp for when you became eligible to provide a timestamp.",
+  "State why your stated reason for stating this should be considered valid.",
+];
+
+// state
+const state = {
+  phase: 'pressure',
+  submissions: 0,
+  lastActionTime: Date.now(),
+  countdownStart: Date.now(),
+  countdownPaused: false,
+  currentQuestion: 0,
+  lastPotValue: 512,
+};
+// dom refs, grabbed once
+const $ = id => document.getElementById(id)
+const reqText = $('proof-request')
+const reqNumber = $('req-number')
+const subCount = $('sub-count')
+const countdownFill = $('countdown-fill')
+const frozenMsg = $('frozen-msg')
+const healingLayer = $('healing-layer')
+const mainUI = $('main-ui')
+const statusText = $('status-text')
+const connectStatus = $('connect-status')
+const sysReport = $('system-report-text')
+const counterStmt = $('counter-statement-text')
+
+reqText.textContent = QUESTIONS[0]; // kick off with the first one
+
+function loadNextQuestion() {
+  state.currentQuestion = (state.currentQuestion + 1) % QUESTIONS.length;
+  reqText.style.opacity = '0';
+  setTimeout(() => {
+    reqNumber.textContent = state.submissions + 1;
+    reqText.textContent = QUESTIONS[state.currentQuestion];
+    reqText.style.opacity = '1';
+  }, 220);
+}
+
+// submit handler
+$('submit-btn').addEventListener('click', () => {
+  if (state.phase !== 'pressure') return;
+  state.submissions++;
+  subCount.textContent = state.submissions;
+  state.lastActionTime = Date.now();
+  loadNextQuestion();
+  spawnErrorPopup();
+});
+// error popups
+const ERROR_MSGS = [
+  ["ERROR 7741", "Proof insufficient.", "Resubmit with supporting evidence."],
+  ['WARNING 2291', 'Submission pattern irregular.', 'Compliance score decreasing.'],
+  ["NOTICE 0044", 'Identity partially detected.', 'Further verification required.'],
+  ['ERROR 8812', 'Evidence of evidence required.', "See form B-441, section 3."],
+  ['ALERT', 'Presence cannot be confirmed.', 'Please continue to prove presence.'],
+  ["SYSTEM", "Your body has been received.", 'Eligibility: unresolved.'],
+  ['ERROR 3391', 'Submission timestamp invalid.', 'Your time of submission is suspicious.'],
+];
+const POPUP_ZONES = [
+  { top: '8%', left: '1%' },
+  { top: "8%", right: "1%" },
+  { top: '38%', left: '1%' },
+  { top: '38%', right: "1%" },
+  { bottom: '14%', left: '1%' },
+  { bottom: "14%", right: '1%' },
+  { top: '62%', left: "1%" },
+  { top: '62%', right: '1%' },
+];
+
+let popupCount = 0;
+const MAX_POPUPS = 8;
+
+function spawnErrorPopup() {
+  if (popupCount >= MAX_POPUPS) {
+    const oldest = document.querySelector('.error-popup');
+    if (oldest) { oldest.remove(); popupCount--; }
+  }
+  const msg = ERROR_MSGS[Math.floor(Math.random() * ERROR_MSGS.length)];
+  const zone = POPUP_ZONES[popupCount % POPUP_ZONES.length];
+
+  const el = document.createElement('div');
+  el.className = 'error-popup';
+  el.innerHTML = `<div class="err-title">${msg[0]}:</div>${msg[1]}<br>${msg[2]}`;
+  Object.assign(el.style, zone);
+  document.body.appendChild(el);
+  popupCount++;
+}
+
+// countdown + pause detection, main loop, runs every 100ms (probably could be slower but whatever)
+setInterval(() => {
+  const now = Date.now();
+  const pause = now - state.lastActionTime;
+
+  // countdown
+  if (!state.countdownPaused && state.phase === 'pressure') {
+    const elapsed = now - state.countdownStart;
+    const pct = Math.max(0, 100 - (elapsed / COUNTDOWN_DURATION_MS) * 100);
+    countdownFill.style.width = pct + '%';
+    countdownFill.style.background = pct < 25 ? '#888' : '#444';
+  }
+
+  // State transitions
+  if (state.phase === 'pressure' && pause > PAUSE_THRESHOLD_MS) {
+    triggerFrozen();
+  }
+  if (state.phase === 'frozen' && pause > HEALING_THRESHOLD_MS) {
+    triggerHealing();
+  }
+}, 100);
+
+// state transitions
+function triggerFrozen() {
+  if (state.phase !== 'pressure') return;
+  state.phase = 'frozen';
+  state.countdownPaused = true;
+
+  mainUI.style.opacity = '0';
+  setTimeout(() => { mainUI.style.display = 'none'; }, 400);
+  frozenMsg.style.display = 'block';
+  statusText.textContent = 'TEMPORAL SABOTAGE DETECTED';
+}
+
+function triggerHealing() {
+  if (state.phase === 'healing') return;
+  state.phase = 'healing';
+
+  frozenMsg.style.display = 'none';
+  healingLayer.style.display = 'flex';
+  statusText.textContent = 'SESSION TERMINATED BY USER';
+
+  // show report after 3s, ascii particles animate behind it while we wait
+  setTimeout(() => {
+    displayReport(getFallbackReport());
+  }, 3000);
+}
+
+// splits the report text into the system report + counter-statement halves
+function displayReport(text) {
+  const parts = text.split('COUNTER-STATEMENT:');
+  const sys = (parts[0] || '').replace('SYSTEM REPORT:', '').trim();
+  const counter = (parts[1] || '').trim();
+
+  sysReport.textContent = sys;
+
+  // Counter-statement fades in 4s after system report appears
+  setTimeout(() => {
+    counterStmt.textContent = counter;
+    counterStmt.style.opacity = '1';
+  }, 4000);
+}
+
+function getFallbackReport() {
+  const n = state.submissions;
+  if (n > 10) return `SYSTEM REPORT:\nThe subject demonstrated sustained over-compliance before terminating the session. ${n} proof submissions were recorded. The system notes that quantity of proof does not constitute quality of proof. Eligibility remains unresolved.\n\nCOUNTER-STATEMENT:\nMy body is not a document. I submitted proof until I understood I never could. I stopped, not because I failed, but because the system was designed to never be satisfied.`;
+  if (n > 4)  return `SYSTEM REPORT:\nThis session recorded ${n} proof submissions before the subject entered a sustained pause. Interaction pattern classified as hesitant-to-resistant. Further compliance required before eligibility can be assessed.\n\nCOUNTER-STATEMENT:\nMy body is not a document. My waiting was not a malfunction. I was thinking, and thinking is not something your system can classify or deny.`;
+  return `SYSTEM REPORT:\nMinimal compliance detected. The subject submitted ${n} proof attempt(s) before refusing to continue. Session archived. Status: pending indefinitely.\n\nCOUNTER-STATEMENT:\nMy body is not a document. My refusal is not an error. I chose to stop, and that choice is mine.`;
+}
+
+// web serial api - for the physical device, falls back to mouse if unavailable
+let serialPort = null;
+let lastLEDTime = 0;
+
+async function connectDevice() {
+  if (!('serial' in navigator)) {
+    alert("Web Serial requires Chrome or Edge. Open this file via a local server (npx serve .)")
+    return;
+  }
+  try {
+    serialPort = await navigator.serial.requestPort();
+    await serialPort.open({ baudRate: 9600 });
+    connectStatus.textContent = 'device connected';
+    $('connect-btn').textContent = 'CONNECTED';
+    $('connect-btn').style.color = '#1a5a4a';
+    readSerial();
+  } catch (e) {
+    connectStatus.textContent = 'connection failed · using mouse';
+  }
+}
+
+async function readSerial() {
+  const decoder = new TextDecoderStream();
+  serialPort.readable.pipeTo(decoder.writable);
+  const reader = decoder.readable.getReader();
+  let buf = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += value;
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for (const line of lines) {
+      if (line.trim()) parseSensorLine(line.trim());
+    }
+  }
+}
+
+function parseSensorLine(line) {
+  const parts = line.split(',').map(Number);
+  if (parts.length < 2 || isNaN(parts[0])) return;
+  const [pot] = parts;
+
+  // Potentiometer change = user is actively turning → reset pause timer
+  if (Math.abs(pot - state.lastPotValue) > 8) {
+    state.lastActionTime = Date.now();
+    if (state.phase === 'pressure') {
+      loadNextQuestion();
+      spawnErrorPopup();
+    }
+  }
+  state.lastPotValue = pot;
+
+  // Send LED state back to Arduino (throttled to 2Hz)
+  const now = Date.now();
+  if (now - lastLEDTime > 500) {
+    lastLEDTime = now;
+    sendLEDCommand(state.phase);
+  }
+}
+
+function sendLEDCommand(phase) {
+  if (!serialPort?.writable) return;
+  const writer = serialPort.writable.getWriter();
+  writer.write(new TextEncoder().encode(phase + '\n'));
+  writer.releaseLock();
+}
+
+// p5 ascii particle system three modes
+const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#%^&*[]{}|<>';
+const HEAL_TEXT = 'My body is not a document.';
+
+new p5(p => {
+  let particles = [];
+  let healTargets = [];
+  let healProgress = 0;
+
+  p.setup = () => {
+    const cnv = p.createCanvas(window.innerWidth, window.innerHeight);
+    cnv.parent('ascii-canvas');
+    for (let i = 0; i < 650; i++) {
+      particles.push({
+        x: p.random(p.width),
+        y: p.random(p.height),
+        vx: p.random(-0.5, 0.5),
+        vy: p.random(-0.5, 0.5),
+        ch: randChar(p),
+        sz: p.random(9, 17),
+        a: p.random(18, 75),
+      });
+    }
+  };
+
+  p.draw = () => {
+    p.clear();
+    p.textFont('Courier New');
+
+    if (state.phase === 'pressure') {
+      for (const pt of particles) {
+        pt.x = (pt.x + pt.vx * 2.2 + p.width)  % p.width;
+        pt.y = (pt.y + pt.vy * 2.2 + p.height) % p.height;
+        if (p.frameCount % 7 === 0) pt.ch = randChar(p);
+        p.noStroke();
+        p.fill(200, 200, 200, pt.a * 0.5);
+        p.textSize(pt.sz);
+        p.text(pt.ch, pt.x, pt.y);
+      }
+
+    } else if (state.phase === 'frozen') {
+      for (const pt of particles) {
+        p.noStroke();
+        p.fill(180, 180, 180, pt.a * 0.2);
+        p.textSize(pt.sz);
+        p.text(pt.ch, pt.x, pt.y);
+      }
+
+    } else if (state.phase === 'healing') {
+      if (healTargets.length === 0) buildHealTargets(p);
+      if (healProgress < 1) healProgress += 0.0012;
+
+      for (let i = 0; i < particles.length; i++) {
+        const pt = particles[i];
+        const hasTarget = i < healTargets.length;
+
+        if (hasTarget) {
+          pt.x = p.lerp(pt.x, healTargets[i].x, 0.016);
+          pt.y = p.lerp(pt.y, healTargets[i].y, 0.016);
+          pt.ch = healTargets[i].ch;
+          // Shift colour from cold white → deep teal
+          const r = Math.round(p.lerp(180,  20, healProgress));
+          const g = Math.round(p.lerp(180, 180, healProgress));
+          const b = Math.round(p.lerp(180, 150, healProgress));
+          p.fill(r, g, b, pt.a * 1.3);
+        } else {
+          pt.x = (pt.x + pt.vx * 0.3 + p.width)  % p.width;
+          pt.y = (pt.y + pt.vy * 0.3 + p.height) % p.height;
+          p.fill(160, 160, 160, pt.a * 0.1);
+        }
+        p.noStroke();
+        p.textSize(pt.sz);
+        p.text(pt.ch, pt.x, pt.y);
+      }
+    }
+  };
+
+  function buildHealTargets(p) {
+    const fz = 20;
+    const spacing = fz * 0.62;
+    const totalW = HEAL_TEXT.length * spacing;
+    const sx = p.width / 2 - totalW / 2;
+    const sy = p.height / 2;
+    for (let i = 0; i < HEAL_TEXT.length; i++) {
+      healTargets.push({ x: sx + i * spacing, y: sy, ch: HEAL_TEXT[i] });
+    }
+  }
+
+  function randChar(p) {
+    return CHARS[Math.floor(p.random(CHARS.length))];
+  }
+
+  p.windowResized = () => {
+    p.resizeCanvas(window.innerWidth, window.innerHeight);
+  };
+});
+</script>
+</body>
+</html>

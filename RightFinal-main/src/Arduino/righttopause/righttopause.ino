@@ -1,0 +1,158 @@
+#include <Wire.h>
+#include <Adafruit_MPR121.h>
+
+/**
+ * Hardware and communication settings.
+ */
+const uint32_t SERIAL_BAUD = 115200;
+const uint8_t MPR121_ADDRESS = 0x5A;
+
+// Test ELE1 because ELE0 returned abnormal values.
+const uint8_t TOUCH_ELECTRODE = 0;
+
+/**
+ * Lower values make the sensor more sensitive.
+ */
+const uint8_t TOUCH_THRESHOLD = 12;
+const uint8_t RELEASE_THRESHOLD = 6;
+
+/**
+ * Ignore very short electrical fluctuations.
+ */
+const uint16_t DEBOUNCE_MS = 35;
+
+/**
+ * Print raw sensor data during hardware testing.
+ * Change this to false after the sensor works.
+ */
+const bool DEBUG_SENSOR = false;
+const uint16_t DEBUG_INTERVAL_MS = 200;
+
+Adafruit_MPR121 sensor;
+
+bool lastReading = false;
+bool stableTouch = false;
+
+unsigned long changedAt = 0;
+unsigned long lastDebugAt = 0;
+
+/**
+ * Read the configured electrode.
+ */
+bool readTouch() {
+  const uint16_t electrodes =
+    sensor.touched();
+
+return (
+  electrodes
+  & (1U << TOUCH_ELECTRODE)
+) != 0;
+}
+/**
+ * Send messages understood by the website.
+ */
+void reportTouch(bool touching) {
+  if (touching) {
+    Serial.println(F("TOUCH"));
+  } else {
+    Serial.println(F("RELEASE"));
+  }
+}
+
+/**
+ * Print raw values for the configured electrode.
+ */
+void printSensorDebug(
+  unsigned long now
+) {
+  if (!DEBUG_SENSOR) return;
+
+  if (
+    now - lastDebugAt
+    < DEBUG_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  lastDebugAt = now;
+
+  Serial.print(F("E"));
+  Serial.print(TOUCH_ELECTRODE);
+
+  Serial.print(F(":"));
+  Serial.print(
+    readTouch()
+      ? 1
+      : 0
+  );
+
+  Serial.print(F(" FILTERED:"));
+  Serial.print(
+    sensor.filteredData(
+      TOUCH_ELECTRODE
+    )
+  );
+
+  Serial.print(F(" BASELINE:"));
+  Serial.println(
+    sensor.baselineData(
+      TOUCH_ELECTRODE
+    )
+  );
+}
+
+void setup() {
+  Serial.begin(SERIAL_BAUD);
+  Wire.begin();
+
+  if (!sensor.begin(MPR121_ADDRESS)) {
+    Serial.println(
+      F("ERROR:MPR121_NOT_FOUND")
+    );
+
+    while (true) {
+      delay(1000);
+    }
+  }
+
+  sensor.setThresholds(
+  TOUCH_THRESHOLD,
+  RELEASE_THRESHOLD
+);
+
+// Automatically calibrate the electrodes.
+sensor.setAutoconfig(true);
+
+// Allow the baseline to settle.
+delay(1000);
+
+  lastReading = readTouch();
+  stableTouch = lastReading;
+
+  Serial.println(F("READY:MPR121"));
+  reportTouch(stableTouch);
+}
+
+void loop() {
+  const bool reading = readTouch();
+  const unsigned long now = millis();
+
+  printSensorDebug(now);
+
+  // Restart timing when the raw state changes.
+  if (reading != lastReading) {
+    lastReading = reading;
+    changedAt = now;
+  }
+
+  // Accept the state after it remains stable.
+  if (
+    reading != stableTouch
+    && now - changedAt >= DEBOUNCE_MS
+  ) {
+    stableTouch = reading;
+    reportTouch(stableTouch);
+  }
+
+  delay(5);
+}

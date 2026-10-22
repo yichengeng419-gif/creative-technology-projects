@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>The Right to Pause - draft 1</title>
+<style>
+body {
+  margin: 0;
+  background: #101014;
+  color: #ddd;
+  font-family: 'Courier New', monospace;
+  text-align: center;
+  overflow: hidden;
+}
+
+h1 {
+  margin-top: 60px;
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: #eee;
+}
+.sub { color: #777; font-size: 12px; margin-bottom: 50px; }
+
+/* glowing button, learned from a tutorial 
+#plate {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  border: 2px solid cyan;
+  margin: 0 auto;
+  line-height: 170px;
+  color: cyan;
+  letter-spacing: 3px;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(0,255,255,0.4);
+  transition: box-shadow .3s;
+  user-select: none;
+}
+#plate:hover { box-shadow: 0 0 35px rgba(0,255,255,0.8); }
+#plate:active { background: rgba(0,255,255,0.12); }
+
+.bar_outer {
+  width: 220px;
+  height: 6px;
+  border: 1px solid cyan;
+  margin: 30px auto;
+  border-radius: 3px;
+}
+#bar { height: 100%; width: 0%; background: cyan; border-radius: 3px; }
+/* TODO: rename this someday, mixing camelCase and snake_case everywhere lol */
+
+#typed { color: rgb(27, 189, 76); font-size: 13px; min-height: 20px; }
+
+#visits {
+  position: fixed;
+  bottom: 15px;
+  left: 15px;
+  color: #555;
+  font-size: 11px;
+}
+
+/* particle canvas behind everything */
+#particles { position: fixed; top: 0; left: 0; z-index: -1; }
+
+/* main page after holding */
+#mainPage { display: none; padding-top: 15vh; }
+    #mainPage h2 { letter-spacing: 4px; font-size: 18px; }
+       #mainPage p { color: #999; font-size: 13px; line-height: 2; }
+
+.blink { animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+</style>
+<base target="_blank">
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<div id="startPage">
+  <h1>THE RIGHT TO PAUSE</h1>
+  <p class="sub">// verification terminal - test build //</p>
+
+  <div id="plate">HOLD</div>
+  <div class="bar_outer"><div id="bar"></div></div>
+
+  <p id="typed"></p>
+</div>
+
+<div id="mainPage">
+  <h2>ACCESS GRANTED<span class="blink">_</span></h2>
+  <p>you held still for 5 seconds.</p>
+  <p>the system noticed your pause.</p>
+  <p><i>(main content goes here)</i></p>
+</div>
+
+<p id="visits"></p>
+
+<script>
+// ---- localStorage visit counter ----
+let visits = localStorage.getItem('visits')
+if (visits == null) visits = 0
+visits++
+localStorage.setItem('visits', visits)
+document.getElementById("visits").innerHTML = "session #" + visits + " / stored locally"
+
+// ---- mouse particle trail ----
+const canvas = document.getElementById("particles")
+   const ctx = canvas.getContext('2d')
+     canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+
+let particles = []
+// might be overkill spawning 3 per move, whatever, looks fine
+
+document.onmousemove = function (e) {
+  for (let i = 0; i < 3; i++) {
+    particles.push({
+      x: e.clientX, y: e.clientY,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2,
+      life: 40
+    })
+  }
+}
+  function drawParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i]
+    p.x += p.vx
+    p.y += p.vy
+    p.life--
+    ctx.fillStyle = "rgba(0,255,255," + (p.life / 60) + ")"
+    ctx.fillRect(p.x, p.y, 2, 2)
+    if (p.life <= 0) {
+      particles.splice(i, 1)
+      i--
+    }
+  }
+  requestAnimationFrame(drawParticles)
+}
+drawParticles()
+
+// ---- typing effect for the status line ----
+const typedEl = document.getElementById("typed")
+let typeTimer = null
+function typeText(text) {
+  clearInterval(typeTimer)
+  typedEl.innerHTML = ""
+  let i = 0
+  typeTimer = setInterval(() => {
+    typedEl.innerHTML += text[i]
+    i++
+    if (i >= text.length) clearInterval(typeTimer)
+  }, 40)
+}
+typeText("> waiting for contact...")
+
+// ---- hold to enter ----
+const plate = document.getElementById("plate")
+const bar = document.getElementById("bar")
+let holdStart = 0
+let timer = null
+let barTimer = null
+let entered = false
+
+plate.onmousedown = function () {
+  if (entered) return
+  holdStart = Date.now()
+  typeText("> contact detected. hold still.")
+
+// 50ms feels smooth enough, no need for rAF here
+  barTimer = setInterval(() => {
+    let p = (Date.now() - holdStart) / 5000 * 100
+    if (p > 100) p = 100
+    bar.style.width = p + "%"
+  }, 50)
+
+  timer = setTimeout(enter, 5000)
+}
+
+plate.onmouseup = function () {
+  if (entered) return
+  clearTimeout(timer)
+  clearInterval(barTimer)
+  bar.style.width = "0%"
+  const held = ((Date.now() - holdStart) / 1000).toFixed(1)
+  typeText("> released after " + held + "s. too fast. try again.")
+}
+
+function enter() {
+  entered = true
+  clearInterval(barTimer)
+  bar.style.width = "100%"
+  typeText("> pause recognised. opening...")
+  setTimeout(() => {
+    document.getElementById("startPage").style.display = "none"
+    document.getElementById("mainPage").style.display = "block"
+  }, 1200)
+}
+</script>
+
+</body>
+</html>
