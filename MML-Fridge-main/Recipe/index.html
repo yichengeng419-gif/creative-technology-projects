@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Fridge · Recipes</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            padding: 24px 0;
+        }
+
+        .phone {
+            width: 375px;
+            background: #f7f8fa;
+            border-radius: 36px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.13);
+            overflow: hidden;
+            min-height: 720px;
+        }
+
+        .header {
+            background: #fff;
+            padding: 20px 16px 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .content {
+            padding: 12px;
+            overflow-y: auto;
+            max-height: calc(100vh - 80px);
+        }
+
+        .selected-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
+            min-height: 24px;
+        }
+
+        .sel-tag {
+            font-size: 11px;
+            padding: 4px 10px;
+            background: #e8f4ff;
+            color: #1a78c2;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .ingredient-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .ingredient-card {
+            background: #fff;
+            border: 1.5px solid #efefef;
+            border-radius: 14px;
+            padding: 10px 12px;
+            cursor: pointer;
+            position: relative;
+            user-select: none;
+        }
+
+        .ingredient-card.selected {
+            border: 2px solid #1a78c2;
+            background: #eaf3ff;
+        }
+
+        .ing-icon {
+            font-size: 22px;
+            margin-bottom: 4px;
+        }
+
+        .ing-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+
+        .ing-meta {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 2px;
+        }
+
+        .ing-days {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .ing-days.urgent {
+            background: #ffebee;
+            color: #d32f2f;
+            /* 醒目的警告红 */
+        }
+
+        .fresh {
+            background: #eafaf2;
+            color: #1a9e5a;
+        }
+
+        .soon {
+            background: #fff8e8;
+            color: #c07800;
+        }
+
+        .hint-text {
+            font-size: 12px;
+            color: #bbb;
+            text-align: center;
+            padding: 8px 0;
+        }
+
+        .recommend-btn {
+            width: 100%;
+            padding: 13px;
+            background: #1a78c2;
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .recommend-btn:disabled {
+            background: #e8e8e8;
+            color: #bbb;
+            cursor: not-allowed;
+        }
+
+        .recipe-card {
+            background: #fff;
+            border: 1px solid #efefef;
+            border-radius: 16px;
+            margin-top: 10px;
+            cursor: pointer;
+            padding: 14px;
+        }
+
+        .recipe-name {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .recipe-desc {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .match-bar {
+            font-size: 11px;
+            font-weight: 600;
+            color: #1a9e5a;
+            background: #eafaf2;
+            padding: 3px 9px;
+            border-radius: 20px;
+            float: right;
+        }
+
+        .detail-view {
+            display: none;
+        }
+
+        .detail-view.visible {
+            display: block;
+        }
+
+        .main-view.hidden {
+            display: none;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #1a78c2;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .ingredient-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 13px;
+        }
+
+        .step-item {
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .error-box {
+            padding: 16px;
+            background: #fff0f0;
+            border-radius: 12px;
+            font-size: 13px;
+            color: #c03030;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="phone">
+        <div class="header">
+            <div class="header-title">🧊 My Fridge</div>
+        </div>
+        <div class="content">
+            <div class="main-view" id="mainView">
+                <div class="selected-tags" id="selectedTags"></div>
+                <div id="ingredientArea"></div>
+                <p class="hint-text" id="hintText">Tap ingredients to select</p>
+                <button class="recommend-btn" id="recipeBtn" disabled onclick="getRecipes()">🍳 Recommend
+                    Recipes</button>
+                <div id="recipeArea"></div>
+            </div>
+            <div class="detail-view" id="detailView">
+                <button class="back-btn" onclick="goBack()">← Back</button>
+                <div id="detailContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const allIngredients = [
+            { id: 1, name: 'Eggs', icon: '🥚', days: 1, amount: '6 pcs' },
+            { id: 2, name: 'Broccoli', icon: '🥦', days: 4, amount: '1 head' },
+            { id: 4, name: 'Chicken Breast', icon: '🍗', days: 2, amount: '300g' },
+            { id: 5, name: 'Tofu', icon: '🫙', days: 7, amount: '1 block' },
+            { id: 6, name: 'Tomatoes', icon: '🍅', days: 3, amount: '4 pcs' },
+            { id: 7, name: 'Garlic', icon: '🧄', days: 7, amount: '1 bulb' },
+            { id: 9, name: 'Spinach', icon: '🥬', days: 1, amount: '1 bunch' },
+            { id: 10, name: 'Mushrooms', icon: '🍄', days: 6, amount: '8 pcs' }
+        ];
+
+        let selected = new Set();
+        let currentRecipes = [];
+
+        // 新增：天数对应的颜色类名判断
+        function daysClass(d) {
+            if (d <= 2) return 'fresh';  // 1-2天：绿色
+            if (d <= 5) return 'soon';   // 3-5天：黄色
+            return 'urgent';             // 大于5天：红色
+        }
+
+        // 新增：天数对应的文案
+        function daysLabel(d) {
+            return d + ' days in';
+        }
+
+        function renderIngredients() {
+            const grid = allIngredients.map(ing => `
+                    <div class="ingredient-card ${selected.has(ing.id) ? 'selected' : ''}" onclick="toggleSelect(${ing.id})">
+                        <span class="ing-days ${daysClass(ing.days)}">${daysLabel(ing.days)}</span>
+                        <div class="ing-icon">${ing.icon}</div>
+                        <div class="ing-name">${ing.name}</div>
+                        <div class="ing-meta">${ing.amount}</div>
+                    </div>`).join('');
+            document.getElementById('ingredientArea').innerHTML = `<div class="ingredient-grid">${grid}</div>`;
+        }
+
+        function toggleSelect(id) {
+            selected.has(id) ? selected.delete(id) : selected.add(id);
+            renderIngredients();
+
+            const tags = [...selected].map(id => {
+                const ing = allIngredients.find(i => i.id === id);
+                return `<span class="sel-tag">${ing.name}</span>`;
+            }).join('');
+            document.getElementById('selectedTags').innerHTML = tags;
+
+            document.getElementById('recipeBtn').disabled = selected.size === 0;
+            document.getElementById('hintText').textContent = selected.size > 0 ? `${selected.size} selected` : 'Tap ingredients to select';
+        }
+
+        async function getRecipes() {
+            const selectedNames = [...selected].map(id => allIngredients.find(i => i.id === id).name);
+            const allNames = allIngredients.map(i => i.name);
+
+            document.getElementById('recipeArea').innerHTML = '<p class="hint-text">Fetching from local database...</p>';
+
+            try {
+                const resp = await fetch('http://localhost:8000/api/recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ selected_ingredients: selectedNames, all_fridge_ingredients: allNames })
+                });
+
+                if (!resp.ok) throw new Error('Backend connection failed');
+
+                currentRecipes = await resp.json();
+
+                if (currentRecipes.length === 0) {
+                    document.getElementById('recipeArea').innerHTML = `<div class="hint-text">No recipes found for these ingredients.</div>`;
+                    return;
+                }
+
+                document.getElementById('recipeArea').innerHTML = currentRecipes.map((r, i) => `
+                        <div class="recipe-card" onclick="showDetail(${i})">
+                            <span class="match-bar">Match ${r.match}%</span>
+                            <div class="recipe-name">${r.name}</div>
+                            <div class="recipe-desc">${r.desc} <br> ⏱ ${r.time} · 🔥 ${r.calories}</div>
+                        </div>`).join('');
+            } catch (e) {
+                document.getElementById('recipeArea').innerHTML = `<div class="error-box">Error: Is your Python backend running? 😔<br><small>${e.message}</small></div>`;
+            }
+        }
+
+        function showDetail(idx) {
+            const r = currentRecipes[idx];
+            const ingList = r.ingredients.map(i => `
+                    <div class="ingredient-row">
+                        <span style="color:${i.have ? '#1a9e5a' : '#ccc'}">${i.have ? '✓' : '○'} ${i.name}</span>
+                        <span style="color:#bbb">${i.amount}</span>
+                    </div>`).join('');
+            const steps = r.steps.map((s, i) => `<div class="step-item"><b>${i + 1}.</b> ${s}</div>`).join('');
+
+            document.getElementById('detailContent').innerHTML = `
+                    <h2>${r.name}</h2>
+                    <p style="color:#aaa; font-size:12px; margin: 8px 0 16px;">${r.difficulty} · ${r.time} · ${r.calories}</p>
+                    <h4 style="margin-bottom:8px;">Ingredients</h4>${ingList}
+                    <h4 style="margin:16px 0 8px;">Steps</h4>${steps}
+                `;
+            document.getElementById('mainView').classList.add('hidden');
+            document.getElementById('detailView').classList.add('visible');
+        }
+
+        function goBack() {
+            document.getElementById('mainView').classList.remove('hidden');
+            document.getElementById('detailView').classList.remove('visible');
+        }
+
+        renderIngredients();
+    </script>
+</body>
+
+</html>
